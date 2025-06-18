@@ -28,10 +28,13 @@ module m_ibm
                s_compute_interpolation_coeffs, &
                s_interpolate_image_point, &
                s_find_ghost_points, &
-               s_find_num_ghost_points
+               s_find_num_ghost_points, &
+               s_accumulate_force, &
+               s_finite_difference_cd2
     ; public :: s_initialize_ibm_module, &
  s_ibm_setup, &
  s_ibm_correct_state, &
+ s_ibm_compute_forces, &
  s_finalize_ibm_module
 
     type(integer_field), public :: ib_markers
@@ -51,6 +54,10 @@ contains
 
     !>  Allocates memory for the variables in the IBM module
     impure subroutine s_initialize_ibm_module()
+
+        integer :: i, j
+
+        gp_layers = 3
 
         if (p > 0) then
             @:ALLOCATE(ib_markers%sf(-gp_layers:m+gp_layers, &
@@ -73,6 +80,15 @@ contains
         @:ACC_SETUP_SFs(levelset_norm)
 
         !$acc enter data copyin(num_gps, num_inner_gps)
+
+        @:ALLOCATE_GLOBAL(Res_viscous_ibm(1:2, 1:maxval(Re_size)))
+
+        do i = 1, 2
+            do j = 1, Re_size(i)
+                Res_viscous_ibm(i, j) = fluid_pp(Re_idx(i, j))%Re(i)
+            end do
+        end do
+        !$acc update device(Res_viscous_ibm)
 
     end subroutine s_initialize_ibm_module
 
@@ -876,6 +892,341 @@ contains
         end do
 
     end subroutine s_interpolate_image_point
+
+    !> Subroutine to calculate force on an immersed boundary
+      !! Converts surface integral to volume integral via gauss thm.
+      !! @param q_prim_vf primitive variables
+      !! @param Fp output pressure force vector (ixyz, i_ib)
+      !! @param Fv output viscous force vector (ixyz, i_ib)
+    subroutine s_ibm_compute_forces(q_prim_vf, Fp, Fv)
+        type(scalar_field), &
+            dimension(sys_size), &
+            intent(in) :: q_prim_vf !< Primitive Variables
+
+        !real(kind(0d0)), dimension(1:num_ibs), intent(inout) :: F
+        real(kind(0d0)), dimension(1:3, 0:num_ibs), intent(out) :: Fp, Fv
+        real(kind(0d0)), dimension(1:3, 0:num_ibs) :: Ftmp
+
+        type(ghost_point) :: gp
+        type(ghost_point) :: innerp
+
+        integer :: i, j, ierr
+
+        ! initialize force variable
+        do i = 1, num_ibs
+            do j=1,3
+                Fp(j, i) = 0
+                Fv(j, i) = 0
+            end do
+        end do
+
+        ! get contribution from ghost points
+        do i = 1, num_gps
+            gp = ghost_points(i)
+            call s_accumulate_force(q_prim_vf, gp, Fp, Fv)
+        end do
+
+        ! get contribution from inner points
+        do i = 1, num_inner_gps
+            innerp = inner_points(i)
+            call s_accumulate_force(q_prim_vf, innerp, Fp, Fv)
+        end do
+
+        ! copy and sum reduce over all processes
+        ! pressure component
+        do i = 1, num_ibs
+            do j=1,3
+                Ftmp(j, i) = Fp(j, i)
+            end do
+        end do
+
+        ! do all reduce so that the forces will be available on every process
+        ! for moving IBM possibly in the future
+        call MPI_ALLREDUCE(Ftmp, Fp, 3*(num_ibs+1), MPI_DOUBLE_PRECISION, &
+                           MPI_SUM, MPI_COMM_WORLD, ierr)
+
+        ! viscous component
+        do i = 1, num_ibs
+            do j=1,3
+                Ftmp(j, i) = Fv(j, i)
+            end do
+        end do
+
+        call MPI_ALLREDUCE(Ftmp, Fv, 3*(num_ibs+1), MPI_DOUBLE_PRECISION, &
+                           MPI_SUM, MPI_COMM_WORLD, ierr)
+
+    end subroutine s_ibm_compute_forces
+
+    !> subroutine to accumulate force contributions from ghost or inner points
+      !! @pararm q_prim_vf is the primitive variables
+      !! @param is the ghost point at which to accumulate force. Can also be an inner point.
+      !! @param Fp has intent(inout). The contribution from this ghost point is added to Fp. Pressure drag.
+      !! @param Fv has intent(inout). The contribution from this ghost point is added to Fv. Viscous drag.
+    subroutine s_accumulate_force(q_prim_vf, gp, Fp, Fv)
+        type(scalar_field), &
+            dimension(sys_size), &
+            intent(in) :: q_prim_vf !< Primitive Variables
+
+        type(ghost_point), intent(in) :: gp
+        real(kind(0d0)), dimension(1:3, 0:num_ibs), intent(inout) :: Fp, Fv
+
+        integer :: j, k, l, ixyz, jj
+        integer :: patch_id
+
+        integer, dimension(1:3) :: jkl
+        real(kind(0d0)) :: dpdx, vol
+
+        integer, dimension(1:3) :: jklm1, jklp1
+        real(kind(0d0)), dimension(1:3, 1:3) :: tau, taum, taup
+        real(kind(0d0)) :: grad_tau, dxm, dxp
+
+        j = gp%loc(1)
+        k = gp%loc(2)
+        l = gp%loc(3)
+        patch_id = gp%ib_patch_id
+
+        jkl(1) = j
+        jkl(2) = k
+        jkl(3) = l
+
+        vol = dx(j)*dy(k)
+
+        if (num_dims == 3) then
+            vol = vol*dz(l)
+        else if (cyl_coord) then
+            vol = vol*2.0d0*pi*y_cc(k)
+        end if
+
+        ! pressure contribution
+        do ixyz=1,num_dims
+            ! finite difference: central, 2nd order
+            call s_finite_difference_cd2(q_prim_vf, E_idx, jkl, ixyz, dpdx)
+            Fp(ixyz, patch_id) = Fp(ixyz, patch_id) - dpdx*vol
+        end do
+
+        ! viscous contribution
+        call s_compute_tau_Re(q_prim_vf, jkl, tau) ! viscous stress tensor at center
+
+        do ixyz=1,num_dims ! direction in which to take gradient
+            ! index of point at which gradient is to be taken
+            jklm1(1:3) = jkl(1:3)
+            jklp1(1:3) = jkl(1:3)
+
+            ! -1 and +1 indices
+            jklm1(ixyz) = jklm1(ixyz) - 1
+            jklp1(ixyz) = jklp1(ixyz) + 1
+
+            ! viscous stress tensors at ...
+            call s_compute_tau_Re(q_prim_vf, jklm1, taum) ! minus 1 position
+            call s_compute_tau_Re(q_prim_vf, jklp1, taup) ! plus 1 position
+
+            call s_compute_dx_cd2(jkl, ixyz, dxm, dxp)
+
+            ! compute gradient of stress tensor
+            !F_{j} = d (tau_{ij})/dx_{i} * volume
+            do jj=1,num_dims
+                call s_finite_difference_cd2_formula(taum(ixyz,jj), tau(ixyz,jj), &
+                    taup(ixyz,jj), dxm, dxp, grad_tau)
+
+                Fv(jj, patch_id) = Fv(jj, patch_id) + grad_tau*vol
+            end do
+
+        end do
+
+        if (cyl_coord) then
+            Fv(1, patch_id) = Fv(1, patch_id) + tau(2, 1) / y_cc(k) * vol
+        end if
+
+    end subroutine s_accumulate_force
+
+    !> Subroutine to calculate the gradient of a quantity in any direction
+       !! second order central difference
+       !! @param sf scalar field (e.g. primitive variables)
+       !! @param ivar variable in the scalar field for which to compute the derivative
+       !! @param jkl is the spatial index of the point in sf at which to calculate the derivative
+       !! @param ixyz which spatial gradiant to take. e.g. ixyz=1 => d/dx
+       !! @param result is the output scalar
+    subroutine s_finite_difference_cd2(sf, ivar, jkl, ixyz, result)
+        type(scalar_field), &
+            dimension(sys_size), &
+            intent(in) :: sf !< Primitive Variables
+
+        integer, intent(in) :: ivar, ixyz
+        integer, dimension(1:3), intent(in) :: jkl
+        integer, dimension(1:3) :: jklm1, jklp1
+
+        real(kind(0d0)), intent(out) :: result
+
+        real(kind(0d0)) :: s, sm1, sp1, dxm, dxp
+
+        ! index of point at which gradient is to be taken
+        jklm1(1:3) = jkl(1:3)
+        jklp1(1:3) = jkl(1:3)
+
+        ! -1 and +1 indices
+        jklm1(ixyz) = jklm1(ixyz) - 1
+        jklp1(ixyz) = jklp1(ixyz) + 1
+
+        call s_compute_dx_cd2(jkl, ixyz, dxm, dxp)
+
+        s = sf(ivar)%sf(jkl(1), jkl(2), jkl(3))
+
+        sm1 = sf(ivar)%sf(jklm1(1), jklm1(2), jklm1(3))
+        sp1 = sf(ivar)%sf(jklp1(1), jklp1(2), jklp1(3))
+
+        call s_finite_difference_cd2_formula(sm1, s, sp1, dxm, dxp, result)
+
+    end subroutine s_finite_difference_cd2
+
+    subroutine s_compute_dx_cd2(jkl, ixyz, dxm, dxp)
+        integer, dimension(1:3), intent(in) :: jkl
+        integer, intent(in) :: ixyz
+        real(kind(0d0)), intent(out) :: dxm, dxp
+
+        if (ixyz == 1) then
+            dxm = x_cc(jkl(ixyz)-1) - x_cc(jkl(ixyz))
+            dxp = x_cc(jkl(ixyz)+1) - x_cc(jkl(ixyz))
+        else if (ixyz == 2) then
+            dxm = y_cc(jkl(ixyz)-1) - y_cc(jkl(ixyz))
+            dxp = y_cc(jkl(ixyz)+1) - y_cc(jkl(ixyz))
+        else
+            dxm = z_cc(jkl(ixyz)-1) - z_cc(jkl(ixyz))
+            dxp = z_cc(jkl(ixyz)+1) - z_cc(jkl(ixyz))
+        end if
+
+    end subroutine s_compute_dx_cd2
+
+    subroutine s_finite_difference_cd2_formula(sm1, s, sp1, dxm, dxp, result)
+        real(kind(0d0)), intent(in) :: sm1, s, sp1, dxm, dxp
+        real(kind(0d0)), intent(out) :: result
+
+        result = (dxm*dxm*sp1 + (dxp*dxp - dxm*dxm)*s - dxp*dxp*sm1) &
+                 / (dxp*dxm*(dxm - dxp))
+
+    end subroutine s_finite_difference_cd2_formula
+
+    subroutine s_compute_tau_Re(q_prim_vf, jkl, tau_Re)
+        type(scalar_field), &
+            dimension(sys_size), &
+            intent(in) :: q_prim_vf
+
+
+        integer, dimension(3), intent(in) :: jkl
+
+        real(kind(0d0)), dimension(3, 3), intent(out) :: tau_Re
+
+        integer :: i, j, q
+        real(kind(0d0)), dimension(num_fluids) :: alpha_visc
+        real(kind(0d0)), dimension(2) :: Re_visc
+        real(kind(0d0)) :: alpha_visc_sum
+        real(kind(0d0)), dimension(3, 3) :: duidxj ! velocity gradient tensor
+        real(kind(0d0)), dimension(3, 3) :: S ! symmetric part of strain rate tensor
+        real(kind(0d0)) :: divu ! divergence of velocity
+
+        ! calculate viscosity
+        do i = 1, num_fluids
+            if (bubbles .and. num_fluids == 1) then
+                alpha_visc(i) = 1d0 - q_prim_vf(E_idx + i)%sf(jkl(1), jkl(2), jkl(3))
+            else
+                alpha_visc(i) = q_prim_vf(E_idx + i)%sf(jkl(1), jkl(2), jkl(3))
+            end if
+        end do
+
+        if (mpp_lim) then
+            !!$acc loop seq
+            do i = 1, num_fluids
+                alpha_visc(i) = min(max(0d0, alpha_visc(i)), 1d0)
+                alpha_visc_sum = alpha_visc_sum + alpha_visc(i)
+            end do
+
+            alpha_visc = alpha_visc/max(alpha_visc_sum, sgm_eps)
+
+        end if
+
+        if (any(Re_size > 0)) then
+            !!$acc loop seq
+            do i = 1, 2
+                Re_visc(i) = dflt_real
+
+                if (Re_size(i) > 0) Re_visc(i) = 0d0
+                !!$acc loop seq
+                do q = 1, Re_size(i)
+                    Re_visc(i) = alpha_visc(Re_idx(i, q))/Res_viscous_ibm(i, q) &
+                                 + Re_visc(i)
+                end do
+
+                Re_visc(i) = 1d0/max(Re_visc(i), sgm_eps)
+
+            end do
+        end if
+
+        ! now calculate velocity gradient tensor
+        duidxj(1:3, 1:3) = 0d0
+        do i=1,num_dims
+            do j=1,num_dims
+                call s_finite_difference_cd2(q_prim_vf, momxb+(i-1), jkl, j, duidxj(i, j))
+            end do
+        end do
+
+        ! calculate S
+        S(1:3, 1:3) = 0d0
+        do i=1,num_dims
+            do j=1,num_dims
+                S(i, j) = 0.5d0*(duidxj(i, j) + duidxj(j, i))
+            end do
+        end do
+
+        ! calculate divergence
+        divu = 0d0
+        do i=1,num_dims
+            divu = divu + duidxj(i, i)
+        end do
+
+        ! account for cylindrical coordinates
+        ! 2D ONLY
+        if (cyl_coord) then
+            divu = divu + q_prim_vf(momxb + 1)%sf(jkl(1), jkl(2), jkl(3)) / y_cc(jkl(2))
+        end if
+
+        ! calculate stress tensor
+        do i=1,num_dims
+            do j=1,num_dims
+                tau_Re(i, j) = 2d0*S(i, j) / Re_visc(1)
+            end do
+        end do
+
+        do i=1,num_dims
+            tau_Re(i, i) = tau_Re(i, i) - 2d0/3d0*divu / Re_visc(1)
+        end do
+
+    end subroutine s_compute_tau_Re
+
+    !>  Subroutine that computes that bubble wall pressure for Gilmore bubbles
+    subroutine s_compute_levelset(levelset, levelset_norm)
+
+        real(kind(0d0)), dimension(0:m, 0:n, 0:p, num_ibs), intent(inout) :: levelset
+        real(kind(0d0)), dimension(0:m, 0:n, 0:p, num_ibs, 3), intent(inout) :: levelset_norm
+        integer :: i !< Iterator variables
+        integer :: geometry
+
+        do i = 1, num_ibs
+            geometry = patch_ib(i)%geometry
+            if (geometry == 2) then
+                call s_compute_circle_levelset(levelset, levelset_norm, i)
+            else if (geometry == 3) then
+                call s_compute_rectangle_levelset(levelset, levelset_norm, i)
+            else if (geometry == 4) then
+                call s_compute_airfoil_levelset(levelset, levelset_norm, i)
+            else if (geometry == 8) then
+                call s_compute_sphere_levelset(levelset, levelset_norm, i)
+            else if (geometry == 10) then
+                call s_compute_cylinder_levelset(levelset, levelset_norm, i)
+            else if (geometry == 11) then
+                call s_compute_3D_airfoil_levelset(levelset, levelset_norm, i)
+            end if
+        end do
+
+    end subroutine s_compute_levelset
 
     !> Subroutine to deallocate memory reserved for the IBM module
     impure subroutine s_finalize_ibm_module()

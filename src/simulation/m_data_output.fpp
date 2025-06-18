@@ -40,15 +40,18 @@ module m_data_output
               s_open_run_time_information_file, &
               s_open_com_files, &
               s_open_probe_files, &
+              s_open_ibm_force_files, &
               s_write_run_time_information, &
               s_write_data_files, &
               s_write_serial_data_files, &
               s_write_parallel_data_files, &
               s_write_com_files, &
               s_write_probe_files, &
+              s_write_ibm_force_files, &
               s_close_run_time_information_file, &
               s_close_com_files, &
               s_close_probe_files, &
+              s_close_ibm_force_files, &
               s_finalize_data_output_module
 
     real(wp), allocatable, dimension(:, :, :) :: icfl_sf  !< ICFL stability criterion
@@ -253,6 +256,35 @@ contains
         end if
 
     end subroutine s_open_probe_files
+
+    !> The purpose of this subroutine is to open a data file for each
+       !! IB so that the forces can be written to these files
+    subroutine s_open_ibm_force_files
+        character(LEN=path_len + 3*name_len) :: file_path !<
+            !! Relative path to the probe data file in the case directory
+
+        integer :: i !< Generic loop iterator
+
+        ! create directory
+        write (file_path, '(A)') '/ibm_force'
+        file_path = trim(case_dir)//trim(file_path)
+        call s_create_directory(trim(file_path))
+
+        do i = 1, num_ibs
+            ! Generating the relative path to the data file
+            write (file_path, '(A,I0,A)') '/ibm_force/', i, '.dat'
+            file_path = trim(case_dir)//trim(file_path)
+
+            ! Creating the formatted data file and setting up its
+            ! structure
+            ! assuming there are less than 1000 probes
+            open (i + 1000, FILE=trim(file_path), &
+                  FORM='formatted', &
+                  STATUS='unknown', &
+                  ACTION='write')
+        end do
+
+    end subroutine s_open_ibm_force_files
 
     !>  The goal of the procedure is to output to the run-time
         !!      information file the stability criteria extrema in the
@@ -1700,6 +1732,26 @@ contains
 
     end subroutine s_write_probe_files
 
+    !> This subroutine first calls s_ibm_compute_forces and then writes 
+       !! those forces to an output file
+    subroutine s_write_ibm_force_files(q_prim_vf)
+        type(scalar_field), &
+            dimension(sys_size), &
+            intent(in) :: q_prim_vf !< Primitive Variables
+
+        real(kind(0d0)), dimension(1:3, 0:num_ibs) :: Fp, Fv
+
+        integer :: i
+
+        call s_ibm_compute_forces(q_prim_vf, Fp, Fv)
+
+        do i = 1, num_ibs
+            write(i + 1000, '(7(E23.15))') &
+                mytime, Fp(1:3, i), Fv(1:3, i)
+        end do
+
+    end subroutine s_write_ibm_force_files
+
     !>  The goal of this subroutine is to write to the run-time
         !!      information file basic footer information applicable to
         !!      the current computation and to close the file when done.
@@ -1746,6 +1798,17 @@ contains
         end do
 
     end subroutine s_close_probe_files
+
+    !> Closes ibm force files
+    subroutine s_close_ibm_force_files
+
+        integer :: i !< Generic loop iterator
+
+        do i = 1, num_ibs
+            close (i + 1000)
+        end do
+
+    end subroutine s_close_ibm_force_files
 
     !>  The computation of parameters, the allocation of memory,
         !!      the association of pointers and/or the execution of any

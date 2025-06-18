@@ -337,6 +337,10 @@ contains
             end do
         end do
 
+        if (ib) then
+            call s_open_ibm_force_files()
+        end if
+
     end subroutine s_initialize_time_steppers_module
 
     !> 1st order TVD RK time-stepping algorithm
@@ -661,6 +665,12 @@ contains
 
         if (bubbles_lagrange .and. .not. adap_dt) call s_update_lagrange_tdv_rk(stage=1)
 
+        if (ib) then
+            call s_write_ibm_force_files(q_prim_vf)
+        end if
+
+        if (t_step == t_step_stop) return
+
         !$acc parallel loop collapse(4) gang vector default(present)
         do i = 1, sys_size
             do l = 0, p
@@ -876,6 +886,7 @@ contains
             else
                 call s_ibm_correct_state(q_cons_ts(1)%vf, q_prim_vf)
             end if
+
         end if
 
         if (.not. adap_dt) then
@@ -1159,6 +1170,11 @@ contains
         if (proc_rank == 0 .and. run_time_info) then
             call s_close_run_time_information_file()
         end if
+
+        if (ib) then
+            call s_close_ibm_force_files()
+        end if
+
 
     end subroutine s_finalize_time_steppers_module
 
