@@ -1,6 +1,9 @@
 # Rayleigh-Taylor Instability (3D)
 
-## Final Condition and Linear Theory
+## Final Condition
 
-<img src="final_condition.png" height="MAX_HEIGHT"/>
-<img src="linear_theory.png" height="MAX_HEIGHT"/>
+![Final Condition](final_condition.png)
+
+## Centerline Velocities
+
+![Linear Theory Comparison](linear_theory.jpg)

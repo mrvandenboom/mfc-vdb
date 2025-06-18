@@ -5,16 +5,17 @@
 !> @brief This module contains subroutines that are compiler specific
 module m_compile_specific
 
-    ! Dependencies
+    ! Dependencies =============================================================
     use m_mpi_proxy
 
     implicit none
+    ! ==========================================================================
 
 contains
 
     !>  Creates a directory and all its parents if it does not exist
         !!  @param dir_name Directory path
-    impure subroutine s_create_directory(dir_name)
+    subroutine s_create_directory(dir_name)
         character(LEN=*), intent(in) :: dir_name
 
 #ifdef _WIN32
@@ -25,7 +26,7 @@ contains
 
     end subroutine s_create_directory
 
-    impure subroutine s_delete_file(filepath)
+    subroutine s_delete_file(filepath)
         character(LEN=*), intent(in) :: filepath
 
 #ifdef _WIN32
@@ -36,7 +37,7 @@ contains
 
     end subroutine s_delete_file
 
-    impure subroutine s_delete_directory(dir_name)
+    subroutine s_delete_directory(dir_name)
         character(LEN=*), intent(in) :: dir_name
 
 #ifdef _WIN32
@@ -50,7 +51,7 @@ contains
     !>  Inquires on the existence of a directory
         !!  @param fileloc File directory location
         !!  @param dircheck Switch that indicates if directory exists
-    impure subroutine my_inquire(fileloc, dircheck)
+    subroutine my_inquire(fileloc, dircheck)
         character(LEN=*), intent(in) :: fileloc
         logical, intent(inout) :: dircheck
 
@@ -62,13 +63,13 @@ contains
 
     end subroutine my_inquire
 
-    impure subroutine s_get_cwd(cwd)
+    subroutine s_get_cwd(cwd)
         character(LEN=*), intent(out) :: cwd
 
         call GETCWD(cwd)
     end subroutine s_get_cwd
 
-    impure subroutine s_get_basename(dirpath, basename)
+    subroutine s_get_basename(dirpath, basename)
         character(LEN=*), intent(in) :: dirpath
         character(LEN=*), intent(out) :: basename
 

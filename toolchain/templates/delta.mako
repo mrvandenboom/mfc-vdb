@@ -31,13 +31,13 @@
 ${helpers.template_prologue()}
 
 ok ":) Loading modules:\n"
-cd "${MFC_ROOT_DIR}"
+cd "${MFC_ROOTDIR}"
 . ./mfc.sh load -c d -m ${'g' if gpu else 'c'}
 cd - > /dev/null
 echo
 
 # Fixes Delta not being able to find core library file
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/sw/spack/deltas11-2023-03/apps/linux-rhel8-zen3/nvhpc-24.1/openmpi-4.1.5-zkiklxi/lib/
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/sw/spack/deltas11-2023-03/apps/linux-rhel8-zen3/nvhpc-22.11/openmpi-4.1.5-nzb4n4r/lib/
 
 % for target in targets:
     ${helpers.run_prologue(target)}
@@ -46,7 +46,8 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/sw/spack/deltas11-2023-03/apps/linux-rh
         (set -x; ${profiler} "${target.get_install_binpath(case)}")
     % else:
         (set -x; ${profiler}                                   \
-            srun --ntasks ${nodes*tasks_per_node}                 \
+            mpirun -np ${nodes*tasks_per_node}                 \
+                   ${' '.join([f"'{x}'" for x in ARG('--') ])} \
                    "${target.get_install_binpath(case)}")
     % endif
 

@@ -7,7 +7,7 @@ fortran_src: &fortran_src
 
 python_src: &python_src
   - '**/*.py'
-  - 'toolchain/pyproject.toml'
+  - 'toolchain/requirements.txt'
 
 cmakelist: &cmakelist
   - 'CMakeLists.txt'
@@ -22,11 +22,7 @@ scripts: &scripts
   - 'toolchain/bootstrap/**'
 
 yml: &yml
-  - '.github/workflows/phoenix/**'
-  - '.github/workflows/frontier/**'
-  - '.github/workflows/bench.yml'
-  - '.github/workflows/test.yml'
-  - '.github/workflows/formatting.yml'
+  - '**/*.yml'
 
 checkall: &checkall
   - *fortran_src

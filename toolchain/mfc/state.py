@@ -8,7 +8,6 @@ class MFCConfig:
     debug:   bool = False
     gcov:    bool = False
     unified: bool = False
-    single: bool = False
 
     @staticmethod
     def from_dict(d: dict):
@@ -50,6 +49,7 @@ class MFCConfig:
 
 gCFG: MFCConfig = MFCConfig()
 gARG: dict      = {}
+
 
 def ARG(arg: str, dflt = None) -> typing.Any:
     # pylint: disable=global-variable-not-assigned

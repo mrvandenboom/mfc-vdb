@@ -31,28 +31,20 @@
 ${helpers.template_prologue()}
 
 ok ":) Loading modules:\n"
-cd "${MFC_ROOT_DIR}"
+cd "${MFC_ROOTDIR}"
 % if engine == 'batch':
 . ./mfc.sh load -c f -m ${'g' if gpu else 'c'}
 % endif
 cd - > /dev/null
 echo
 
-% if gpu:
-    export MPICH_GPU_SUPPORT_ENABLED=1
-% else:
-    export MPICH_GPU_SUPPORT_ENABLED=0
-% endif
+export MPICH_GPU_SUPPORT_ENABLED=1
 
 % for target in targets:
     ${helpers.run_prologue(target)}
 
     % if not mpi:
-        (set -x; \
-            % if target.name == 'simulation':
-            ${profiler} \
-        % endif
-            "${target.get_install_binpath(case)}")
+        (set -x; ${profiler} "${target.get_install_binpath(case)}")
     % else:
         (set -x; srun \
         % if engine == 'interactive':
@@ -62,10 +54,7 @@ echo
                 --gpus-per-task 1 --gpu-bind closest                 \
             % endif
         % endif
-        % if target.name == 'simulation':
-                ${profiler} \
-        % endif
-                "${target.get_install_binpath(case)}")
+                ${profiler} "${target.get_install_binpath(case)}")
     % endif
 
     ${helpers.run_epilogue(target)}

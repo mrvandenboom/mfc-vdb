@@ -6,7 +6,7 @@
     #> The MFC prologue prints a summary of the running job and starts a timer.
     #>
 
-    . "${MFC_ROOT_DIR}/toolchain/util.sh"
+    . "${MFC_ROOTDIR}/toolchain/util.sh"
 
     TABLE_FORMAT_LINE="| * %-14s $MAGENTA%-35s$COLOR_RESET * %-14s $MAGENTA%-35s$COLOR_RESET |\\n"
     TABLE_HEADER="+-----------------------------------------------------------------------------------------------------------+ \\n"
@@ -70,9 +70,13 @@ END
 % if os.name != 'nt':
     ok ":) Running$MAGENTA ${target.name}$COLOR_RESET:\n"
 
-    cd '${os.path.dirname(input)}'
+    if [ '${target.name}' == 'simulation' ]; then
+        export CRAY_ACC_MODULE='${target.get_staging_dirpath(case)}/simulation-wg256.lld.exe'
+    fi
 
-    t_${target.name}_start=$(python3 -c 'import time; print(time.time())')
+    cd "${os.path.dirname(input)}"
+
+    t_${target.name}_start=$(perl -MTime::HiRes=time -e 'printf "%.9f\n", time')
 % else:
     echo ^:) Running ${target.name}.
     echo.
@@ -85,12 +89,7 @@ END
 % if os.name != 'nt':
     code=$?
 
-    t_${target.name}_stop=$(python3 -c 'import time; print(time.time())')
-
-    if [ $code -eq 22 ]; then
-        echo
-        error "$YELLOW CASE FILE ERROR$COLOR_RESET > $YELLOW Case file has prohibited conditions as stated above.$COLOR_RESET"
-    fi
+    t_${target.name}_stop=$(perl -MTime::HiRes=time -e 'printf "%.9f\n", time')
 
     if [ $code -ne 0 ]; then
         echo
@@ -99,16 +98,14 @@ END
         exit 1
     fi
 
+    unset CRAY_ACC_MODULE
+
     % if output_summary:
 
-        cd '${MFC_ROOT_DIR}'
+        cd "${MFC_ROOTDIR}"
 
-        cat >>'${output_summary}' <<EOL
-${target.name}:
-    exec:  $(echo "$t_${target.name}_stop - $t_${target.name}_start" | bc -l)
-% if target == SIMULATION:
-    grind: $(cat '${os.path.join(os.path.dirname(input), 'time_data.dat')}' | tail -n 1 | awk '{print $NF}')
-% endif
+        cat >>"${output_summary}" <<EOL
+${target.name}: $(echo "$t_${target.name}_stop - $t_${target.name}_start" | bc -l)
 EOL
 
         cd - > /dev/null

@@ -1,5 +1,4 @@
 module m_delay_file_access
-    use m_precision_select
     implicit none
     private
 
@@ -11,17 +10,17 @@ module m_delay_file_access
 
 contains
 
-    impure subroutine DelayFileAccess(ProcessRank)
+    subroutine DelayFileAccess(ProcessRank)
         integer, intent(in) :: ProcessRank
 
         integer :: iDelay, nFileAccessDelayIterations
-        real(wp) :: Number, Dummy
+        real(kind(0d0)) :: Number, Dummy
 
         nFileAccessDelayIterations &
             = (ProcessRank/N_PROCESSES_FILE_ACCESS)*FILE_ACCESS_DELAY_UNIT
 
         do iDelay = 1, nFileAccessDelayIterations
-            ! Wait my turn
+            !-- wait my turn
             call random_number(Number)
             Dummy = Number*Number
         end do
