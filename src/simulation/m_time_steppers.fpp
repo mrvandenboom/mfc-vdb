@@ -321,6 +321,13 @@ contains
                 @:ACC_SETUP_SFs(q_prim_vf(damage_idx))
             end if
 
+            if (hyper_cleaning) then
+                @:ALLOCATE(q_prim_vf(psi_idx)%sf(idwbuff(1)%beg:idwbuff(1)%end, &
+                    idwbuff(2)%beg:idwbuff(2)%end, &
+                    idwbuff(3)%beg:idwbuff(3)%end))
+                @:ACC_SETUP_SFs(q_prim_vf(psi_idx))
+            end if
+
             if (model_eqns == 3) then
                 do i = internalEnergies_idx%beg, internalEnergies_idx%end
                     @:ALLOCATE(q_prim_vf(i)%sf(idwbuff(1)%beg:idwbuff(1)%end, &
@@ -618,11 +625,8 @@ contains
             if (adv_n) call s_comp_alpha_from_n(q_cons_ts(1)%vf)
 
             if (ib) then
-                ! check if any IBMS are moving, and if so, update the markers, ghost points, levelsets, and levelset norms
-                if (moving_immersed_boundary_flag) then
-                    call s_propagate_immersed_boundaries(s)
-                end if
-
+                call s_propagate_immersed_boundaries(s,t_step)
+                
                 ! update the ghost fluid properties point values based on IB state
                 if (qbmm .and. .not. polytropic) then
                     call s_ibm_correct_state(q_cons_ts(1)%vf, q_prim_vf, pb_ts(1)%sf, mv_ts(1)%sf)
@@ -630,6 +634,7 @@ contains
                     call s_ibm_correct_state(q_cons_ts(1)%vf, q_prim_vf)
                 end if
             end if
+
         end do
 
         ! Adaptive dt: final stage
@@ -782,13 +787,26 @@ contains
 
     end subroutine s_apply_bodyforces
 
-    subroutine s_propagate_immersed_boundaries(s)
+    subroutine s_propagate_immersed_boundaries(s, t_step)
 
         integer, intent(in) :: s
+        integer, intent(in) :: t_step
         integer :: i
         logical :: forces_computed
 
         forces_computed = .false.
+
+        ! Compute forces for ALL IBs at first RK stage and write to file
+        if (s == 1 .and. .not. forces_computed) then
+            call s_compute_ib_forces(q_prim_vf, fluid_pp)
+            call s_write_ib_force_data(t_step)
+            forces_computed = .true.
+        end if
+        
+        ! check if any IBMS are moving, and if so, update the markers, ghost points, levelsets, and levelset norms
+        if (.not. moving_immersed_boundary_flag) then
+            return
+        end if
 
         do i = 1, num_ibs
             if (s == 1) then
@@ -808,11 +826,7 @@ contains
                     ! plug in analytic velocities for 1-way coupling, if it exists
                     @:mib_analytical()
                 else if (patch_ib(i)%moving_ibm == 2) then ! if we are using two-way coupling, apply force and torque
-                    ! compute the force and torque on the IB from the fluid
-                    if (.not. forces_computed) then
-                        call s_compute_ib_forces(q_prim_vf, fluid_pp)
-                        forces_computed = .true.
-                    end if
+                    ! Forces already computed above, just apply them here
 
                     ! update the velocity from the force value
                     patch_ib(i)%vel = patch_ib(i)%vel + rk_coef(s, 3)*dt*(patch_ib(i)%force/patch_ib(i)%mass)/rk_coef(s, 4)
@@ -1002,6 +1016,10 @@ contains
 
             if (cont_damage) then
                 @:DEALLOCATE(q_prim_vf(damage_idx)%sf)
+            end if
+
+            if (hyper_cleaning) then
+                @:DEALLOCATE(q_prim_vf(psi_idx)%sf)
             end if
 
             if (bubbles_euler) then

@@ -1,0 +1,16 @@
+#!/bin/bash
+set -euo pipefail
+
+./mfc.sh run /blue/bala1s/m.vandenboom/cylcross/case.py \
+	--name 2dexample \
+	--mpi \
+	--partition hpg-turin \
+	--nodes 1 \
+	--tasks-per-node 3 \
+	--email m.vandenboom@ufl.edu \
+	--walltime 3:00:00 \
+	--account bala1s \
+	--engine batch \
+	--computer hipergator \
+	--no-debug \
+	--gpu acc

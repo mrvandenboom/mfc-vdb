@@ -42,15 +42,18 @@ module m_data_output
               s_open_run_time_information_file, &
               s_open_com_files, &
               s_open_probe_files, &
+              s_open_ib_force_files, &
               s_write_run_time_information, &
               s_write_data_files, &
               s_write_serial_data_files, &
               s_write_parallel_data_files, &
               s_write_com_files, &
               s_write_probe_files, &
+              s_write_ib_force_data, &
               s_close_run_time_information_file, &
               s_close_com_files, &
               s_close_probe_files, &
+              s_close_ib_force_files, &
               s_finalize_data_output_module
 
     real(wp), allocatable, dimension(:, :, :) :: icfl_sf  !< ICFL stability criterion
@@ -254,6 +257,49 @@ contains
         end if
 
     end subroutine s_open_probe_files
+
+    !>  Opens formatted data files where the root processor
+    !!      can write out immersed boundary force information
+    impure subroutine s_open_ib_force_files()
+
+        character(LEN=path_len + 3*name_len) :: file_path !<
+            !! Relative path to the IB force data file in the case directory
+
+        integer :: i !< Generic loop iterator
+        logical :: file_exist
+
+        if (.not. ib) return
+
+        do i = 1, num_ibs
+            ! Generating the relative path to the IB force data file
+            write (file_path, '(A,I0,A)') '/D/ib_', i, '_forces.dat'
+            file_path = trim(case_dir)//trim(file_path)
+
+            ! Creating the formatted data file and setting up its structure
+            inquire (FILE=trim(file_path), EXIST=file_exist)
+
+            if (file_exist) then
+                open (3000 + i, FILE=trim(file_path), &
+                      FORM='formatted', &
+                      STATUS='old', &
+                      POSITION='append')
+            else
+                open (3000 + i, FILE=trim(file_path), &
+                      FORM='formatted', &
+                      STATUS='new')
+
+                ! Write header only for new files
+                if (proc_rank == 0) then
+                    if (p > 0) then  ! 3D case (changed from num_dims == 3)
+                        write (3000 + i, '(A)') '# time fx fy fz tau_x tau_y tau_z'
+                    else  ! 2D case
+                        write (3000 + i, '(A)') '# time fx fy tau_z'
+                    end if
+                end if
+            end if
+        end do
+
+    end subroutine s_open_ib_force_files
 
     !>  The goal of the procedure is to output to the run-time
         !!      information file the stability criteria extrema in the
@@ -1765,6 +1811,42 @@ contains
 
     end subroutine s_write_probe_files
 
+    !>  Writes immersed boundary force/torque data at current timestep
+    !!  @param t_step Current time-step
+    impure subroutine s_write_ib_force_data(t_step)
+
+        integer, intent(in) :: t_step
+
+        integer :: i !< Generic loop iterator
+        real(wp) :: nondim_time !< Non-dimensional time
+
+        if (.not. ib) return
+        if (proc_rank /= 0) return
+
+        ! Non-dimensional time calculation
+        if (t_step_old /= dflt_int) then
+            nondim_time = real(t_step + t_step_old, wp)*dt
+        else
+            nondim_time = real(t_step, wp)*dt
+        end if
+
+        do i = 1, num_ibs
+            if (p > 0) then ! 3D case
+                write (3000 + i, '(7(ES23.16,1X))') &
+                    nondim_time, &
+                    patch_ib(i)%force(1), patch_ib(i)%force(2), patch_ib(i)%force(3), &
+                    patch_ib(i)%torque(1), patch_ib(i)%torque(2), patch_ib(i)%torque(3)
+            else ! 2D case
+                write (3000 + i, '(4(ES23.16,1X))') &
+                    nondim_time, &
+                    patch_ib(i)%force(1), patch_ib(i)%force(2), &
+                    patch_ib(i)%torque(3)
+            end if
+            flush(3000 + i)  ! Add flush to ensure data is written
+        end do
+
+    end subroutine s_write_ib_force_data
+
     !>  The goal of this subroutine is to write to the run-time
         !!      information file basic footer information applicable to
         !!      the current computation and to close the file when done.
@@ -1812,6 +1894,20 @@ contains
 
     end subroutine s_close_probe_files
 
+    !> Closes IB force files
+    impure subroutine s_close_ib_force_files()
+
+        integer :: i !< Generic loop iterator
+
+        if (.not. ib) return
+        if (proc_rank /= 0) return
+
+        do i = 1, num_ibs
+            close (3000 + i)
+        end do
+
+    end subroutine s_close_ib_force_files
+
     !>  The computation of parameters, the allocation of memory,
         !!      the association of pointers and/or the execution of any
         !!      other procedures that are necessary to setup the module.
@@ -1835,6 +1931,12 @@ contains
 
         if (probe_wrt) then
             @:ALLOCATE(c_mass(num_fluids,5))
+        end if
+
+        ! Open IB force files if immersed boundaries are present
+        
+        if (ib .and. proc_rank == 0) then
+            call s_open_ib_force_files()  
         end if
 
         if (down_sample) then
@@ -1865,6 +1967,11 @@ contains
             if (viscous) then
                 @:DEALLOCATE(vcfl_sf, Rc_sf)
             end if
+        end if
+
+        ! Close IB force files
+        if (ib .and. proc_rank == 0) then
+            call s_close_ib_force_files()
         end if
 
         if (down_sample) then

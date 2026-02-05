@@ -1,0 +1,14 @@
+#!/bin/bash
+
+rm -f *.png
+rm -f *.txt
+rm -f *.dat
+rm -f *.inf
+rm -f *.out
+rm -f *.inp
+rm -f *.sh
+rm -r -f silo_hdf5
+rm -r -f restart_data
+rm -r -f D
+rm -r -f ibm_force
+ls
