@@ -33,6 +33,7 @@ module m_start_up
     use m_checker
     use m_boundary_common
     use m_boundary_conditions
+    use m_sphere_pack_data
 
     implicit none
 
@@ -69,22 +70,46 @@ contains
     !! user provided inputs
     impure subroutine s_read_input_file
 
-        character(LEN=name_len) :: file_loc
-        logical                 :: file_check
-        integer                 :: iostatus
-        character(len=1000)     :: line
+        character(LEN=name_len) :: file_loc  !<
+            !! Generic string used to store the address of a particular file
 
-        namelist /user_inputs/ case_dir, old_grid, old_ic, t_step_old, t_step_start, m, n, p, x_domain, y_domain, z_domain, &
-            & stretch_x, stretch_y, stretch_z, a_x, a_y, a_z, x_a, y_a, z_a, x_b, y_b, z_b, model_eqns, num_fluids, mpp_lim, &
-            & weno_order, bc_x, bc_y, bc_z, num_patches, hypoelasticity, mhd, patch_icpp, fluid_pp, bub_pp, precision, &
-            & parallel_io, mixlayer_vel_profile, mixlayer_vel_coef, mixlayer_perturb, mixlayer_perturb_nk, mixlayer_perturb_k0, &
-            & pi_fac, perturb_flow, perturb_flow_fluid, perturb_flow_mag, perturb_sph, perturb_sph_fluid, fluid_rho, cyl_coord, &
-            & loops_x, loops_y, loops_z, rhoref, pref, bubbles_euler, R0ref, nb, polytropic, thermal, Ca, Web, Re_inv, &
-            & polydisperse, poly_sigma, qbmm, sigR, sigV, dist_type, rhoRV, file_per_process, relax, relax_model, palpha_eps, &
-            & ptgalpha_eps, ib, num_ibs, patch_ib, sigma, adv_n, cfl_adap_dt, cfl_const_dt, n_start, n_start_old, &
-            & surface_tension, hyperelasticity, pre_stress, elliptic_smoothing, elliptic_smoothing_iters, viscous, &
-            & bubbles_lagrange, num_bc_patches, patch_bc, Bx0, relativity, cont_damage, igr, igr_order, down_sample, recon_type, &
-            & muscl_order, hyper_cleaning, simplex_perturb, simplex_params, fft_wrt
+        logical :: file_check !<
+            !! Generic logical used for the purpose of asserting whether a file
+            !! is or is not present in the designated location
+
+        integer :: iostatus
+            !! Integer to check iostat of file read
+
+        character(len=1000) :: line
+
+        ! Namelist for all of the parameters to be inputted by the user
+        namelist /user_inputs/ case_dir, old_grid, old_ic, &
+            t_step_old, t_step_start, m, n, p, x_domain, y_domain, z_domain, &
+            stretch_x, stretch_y, stretch_z, a_x, a_y, &
+            a_z, x_a, y_a, z_a, x_b, y_b, z_b, &
+            model_eqns, num_fluids, mpp_lim, &
+            weno_order, bc_x, bc_y, bc_z, num_patches, &
+            hypoelasticity, mhd, patch_icpp, fluid_pp, bub_pp, &
+            precision, parallel_io, mixlayer_vel_profile, mixlayer_vel_coef, &
+            mixlayer_perturb, mixlayer_perturb_nk, mixlayer_perturb_k0, &
+            pi_fac, perturb_flow, perturb_flow_fluid, perturb_flow_mag, &
+            perturb_sph, perturb_sph_fluid, fluid_rho, &
+            cyl_coord, loops_x, loops_y, loops_z, &
+            rhoref, pref, bubbles_euler, R0ref, nb, &
+            polytropic, thermal, Ca, Web, Re_inv, &
+            polydisperse, poly_sigma, qbmm, &
+            sigR, sigV, dist_type, rhoRV, &
+            file_per_process, relax, relax_model, &
+            palpha_eps, ptgalpha_eps, ib, num_ibs, patch_ib, &
+            sigma, adv_n, cfl_adap_dt, cfl_const_dt, n_start, &
+            n_start_old, surface_tension, hyperelasticity, pre_stress, &
+            elliptic_smoothing, elliptic_smoothing_iters, &
+            viscous, bubbles_lagrange, num_bc_patches, &
+            patch_bc, Bx0, relativity, cont_damage, igr, igr_order, &
+            down_sample, recon_type, muscl_order, hyper_cleaning, &
+            simplex_perturb, simplex_params, fft_wrt, &
+            sphere_pack, sphere_pack_radius, sphere_pack_vf, sphere_pack_void_frac, sphere_pack_n, &
+            sphere_pack_min_gap, sphere_pack_seed
 
         file_loc = 'pre_process.inp'
         inquire (FILE=trim(file_loc), EXIST=file_check)
@@ -650,6 +675,8 @@ contains
         call s_finalize_boundary_common_module()
         if (relax) call s_finalize_relaxation_solver_module()
         call s_finalize_initial_condition_module()
+        call s_finalize_sphere_pack_data()
+        ! Finalization of the MPI environment
         call s_mpi_finalize()
 
     end subroutine s_finalize_modules

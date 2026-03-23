@@ -18,6 +18,9 @@ module m_ibm
     use m_compute_levelset
     use m_ib_patches
     use m_viscous
+
+    use m_sphere_pack_data
+
     use m_model
 
     implicit none
@@ -57,6 +60,13 @@ contains
 
         $:GPU_ENTER_DATA(copyin='[num_gps]')
 
+        ! Read compact sphere packing data (if present)
+        call s_read_sphere_pack_file(case_dir)
+        if (n_packed_spheres > 0) then
+            call s_build_sphere_cell_list()
+            $:GPU_UPDATE(device='[patch_ib(sp_ib_offset)]')
+        end if
+
     end subroutine s_initialize_ibm_module
 
     !> Initializes the values of various IBM variables, such as ghost points and image points.
@@ -91,6 +101,13 @@ contains
         ib_markers%sf = 0._wp
         $:GPU_UPDATE(device='[ib_markers%sf]')
         call s_apply_ib_patches(ib_markers)
+
+        ! Mark cells inside packed spheres (CPU pass using cell-linked list)
+        if (n_packed_spheres > 0) then
+            call s_mark_sphere_ib_cells(ib_markers)
+            $:GPU_UPDATE(device='[ib_markers%sf]')
+        end if
+
         $:GPU_UPDATE(host='[ib_markers%sf]')
         do i = 1, num_ibs
             if (patch_ib(i)%moving_ibm /= 0) call s_compute_centroid_offset(i)  ! offsets are computed after IB markers are generated
@@ -114,6 +131,20 @@ contains
         ! Ghost-cell IBM, Tseng & Ferziger JCP (2003), Mittal & Iaccarino ARFM (2005)
         call s_find_ghost_points(ghost_points)
         call s_apply_levelset(ghost_points, num_gps)
+
+        ! CPU pass: compute levelset for packed-sphere ghost points.
+        ! These have ib_patch_id == sp_ib_offset; patch_ib(sp_ib_offset)%geometry
+        ! is dflt_int (-100) which matches no geometry branch in s_apply_levelset,
+        ! so the GPU pass skips them and this CPU pass handles them instead.
+        if (n_packed_spheres > 0) then
+            $:GPU_UPDATE(host='[ghost_points]')
+            do i = 1, num_gps
+                if (ghost_points(i)%ib_patch_id == sp_ib_offset) then
+                    call s_sphere_pack_levelset_nearest(ghost_points(i))
+                end if
+            end do
+            $:GPU_UPDATE(device='[ghost_points]')
+        end if
 
         call s_compute_image_points(ghost_points)
         call s_compute_interpolation_coeffs(ghost_points)
@@ -861,6 +892,12 @@ contains
         ! recompute the new ib_patch locations and broadcast them.
         call nvtxStartRange("APPLY-IB-PATCHES")
         call s_apply_ib_patches(ib_markers)
+
+        if (n_packed_spheres > 0) then
+            call s_mark_sphere_ib_cells(ib_markers)
+            $:GPU_UPDATE(device='[ib_markers%sf]')
+        end if
+
         call nvtxEndRange
 
         call nvtxStartRange("COMPUTE-GHOST-POINTS")
@@ -871,6 +908,16 @@ contains
 
         call nvtxStartRange("COMPUTE-IMAGE-POINTS")
         call s_apply_levelset(ghost_points, num_gps)
+
+        if (n_packed_spheres > 0) then
+            $:GPU_UPDATE(host='[ghost_points]')
+            do i = 1, num_gps
+                if (ghost_points(i)%ib_patch_id == sp_ib_offset) then
+                    call s_sphere_pack_levelset_nearest(ghost_points(i))
+                end if
+            end do
+            $:GPU_UPDATE(device='[ghost_points]')
+        end if
         call s_compute_image_points(ghost_points)
         call s_compute_interpolation_coeffs(ghost_points)
         call nvtxEndRange
@@ -1039,6 +1086,7 @@ contains
             @:DEALLOCATE(airfoil_grid_u)
             @:DEALLOCATE(airfoil_grid_l)
         end if
+        call s_finalize_sphere_pack_data()
 
     end subroutine s_finalize_ibm_module
 

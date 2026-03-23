@@ -7,41 +7,40 @@ module m_constants
 
     use m_precision_select
 
-    character, parameter :: dflt_char = ' '             !< Default string value
-    real(wp), parameter  :: dflt_real = -1.e6_wp        !< Default real value
-    real(wp), parameter  :: sgm_eps = 1.e-16_wp         !< Segmentation tolerance
-    real(wp), parameter  :: Chem_Tolerance = 1.e-16_wp  !< Speed of Sound Tolerance in Chemistry
-    real(wp), parameter  :: small_alf = 1.e-11_wp       !< Small alf tolerance
-    real(wp), parameter  :: pi = 3.141592653589793_wp   !< Pi
-    real(wp), parameter  :: verysmall = 1.e-12_wp       !< Very small number
-    !> Radius cutoff to avoid division by zero for 3D spherical harmonic patch (geometry 14)
-    real(wp), parameter :: small_radius = 1.e-32_wp
-    integer, parameter  :: num_stcls_min = 5                   !< Minimum # of stencils
-    integer, parameter  :: path_len = 400                      !< Maximum path length
-    integer, parameter  :: name_len = 50                       !< Maximum name length
-    integer, parameter  :: dflt_int = -100                     !< Default integer value
-    integer, parameter  :: fourier_rings = 5                   !< Fourier filter ring limit
-    integer, parameter  :: num_fluids_max = 10                 !< Maximum number of fluids in the simulation
-    integer, parameter  :: num_probes_max = 10                 !< Maximum number of flow probes in the simulation
-    integer, parameter  :: num_patches_max = 1000              !< Maximum number of IC patches
-    integer, parameter  :: num_bc_patches_max = 10             !< Maximum number of boundary condition patches
-    integer, parameter  :: max_2d_fourier_modes = 10           !< Max Fourier mode index for 2D modal patch (geometry 13)
-    integer, parameter  :: max_sph_harm_degree = 5             !< Max degree L for 3D spherical harmonic patch (geometry 14)
-    integer, parameter  :: pathlen_max = 400                   !< Maximum path length for STL/OBJ model files
-    integer, parameter  :: nnode = 4                           !< Number of QBMM nodes
-    integer, parameter  :: dflt_num_igr_iters = 2              !< number of iterations for IGR elliptic solve
-    integer, parameter  :: dflt_num_igr_warm_start_iters = 50  !< default number of iterations for IGR elliptic solve
-    real(wp), parameter :: dflt_alf_factor = 10._wp            !< scaling factor for IGR alpha
-    integer, parameter  :: gp_layers = 3                       !< Number of ghost point layers for IBM
-    !> color function gradient magnitude at which to apply the surface tension fluxes
-    real(wp), parameter :: capillary_cutoff = 1.e-6
-    !> Spatial support width of acoustic source, used in s_source_spatial
-    real(wp), parameter :: acoustic_spatial_support_width = 2.5_wp
-    real(wp), parameter :: dflt_vcfl_dt = 100._wp  !< value of vcfl_dt when viscosity is off for computing adaptive timestep size
-    !> The constant to scale the spectral level at the lower frequency bound
-    real(wp), parameter :: broadband_spectral_level_constant = 20._wp
-    !> The spectral level constant to correct the magnitude at each frequency to ensure the source is overall broadband
-    real(wp), parameter :: broadband_spectral_level_growth_rate = 10._wp
+    character, parameter :: dflt_char = ' ' !< Default string value
+
+    real(wp), parameter :: dflt_real = -1.e6_wp                !< Default real value
+    real(wp), parameter :: sgm_eps = 1.e-16_wp               !< Segmentation tolerance
+    real(wp), parameter :: Chem_Tolerance = 1.e-16_wp               !< Speed of Sound Tolerance in Chemistry
+    real(wp), parameter :: small_alf = 1.e-11_wp                !< Small alf tolerance
+    real(wp), parameter :: pi = 3.141592653589793_wp !< Pi
+    real(wp), parameter :: verysmall = 1.e-12_wp              !< Very small number
+    real(wp), parameter :: small_radius = 1.e-32_wp           !< Radius cutoff to avoid division by zero for 3D spherical harmonic patch (geometry 14)
+
+    integer, parameter :: num_stcls_min = 5                       !< Minimum # of stencils
+    integer, parameter :: path_len = 400                          !< Maximum path length
+    integer, parameter :: name_len = 50                           !< Maximum name length
+    integer, parameter :: dflt_int = -100                         !< Default integer value
+    integer, parameter :: fourier_rings = 5                       !< Fourier filter ring limit
+    integer, parameter :: num_fluids_max = 10                     !< Maximum number of fluids in the simulation
+    integer, parameter :: num_probes_max = 10                     !< Maximum number of flow probes in the simulation
+    integer, parameter :: num_patches_max = 1000
+    integer, parameter :: num_ibs_max = 1100                       !< Maximum number of IB patches
+    integer, parameter :: num_bc_patches_max = 10
+    integer, parameter :: max_2d_fourier_modes = 10 !< Max Fourier mode index for 2D modal patch (geometry 13)
+    integer, parameter :: max_sph_harm_degree = 5   !< Max degree L for 3D spherical harmonic patch (geometry 14)
+    integer, parameter :: pathlen_max = 400
+    integer, parameter :: nnode = 4    !< Number of QBMM nodes
+    integer, parameter :: dflt_num_igr_iters = 2 !< number of iterations for IGR elliptic solve
+    integer, parameter :: dflt_num_igr_warm_start_iters = 50 !< default number of iterations for IGR elliptic solve
+    real(wp), parameter :: dflt_alf_factor = 10._wp !< scaling factor for IGR alpha
+    integer, parameter :: gp_layers = 3 !< Number of ghost point layers for IBM
+    real(wp), parameter :: capillary_cutoff = 1.e-6 !< color function gradient magnitude at which to apply the surface tension fluxes
+    real(wp), parameter :: acoustic_spatial_support_width = 2.5_wp !< Spatial support width of acoustic source, used in s_source_spatial
+    real(wp), parameter :: dflt_vcfl_dt = 100._wp !< value of vcfl_dt when viscosity is off for computing adaptive timestep size
+    real(wp), parameter :: broadband_spectral_level_constant = 20._wp !< The constant to scale the spectral level at the lower frequency bound
+    real(wp), parameter :: broadband_spectral_level_growth_rate = 10._wp !< The spectral level constant to correct the magnitude at each frequency to ensure the source is overall broadband
+
     ! Reconstruction Types
     integer, parameter :: WENO_TYPE = 1   !< Using WENO for reconstruction type
     integer, parameter :: MUSCL_TYPE = 2  !< Using MUSCL for reconstruction type
