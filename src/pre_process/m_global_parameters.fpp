@@ -176,14 +176,14 @@ module m_global_parameters
 
     !> @name Sphere packing parameters
     !> @{
-    logical  :: sphere_pack          !< Enable random sphere packing for IB initialization
+    logical :: sphere_pack          !< Enable random sphere packing for IB initialization
     real(wp) :: sphere_pack_radius   !< Radius of each packed sphere
     real(wp) :: sphere_pack_vf       !< Target solid volume fraction
     real(wp) :: sphere_pack_void_frac !< Target void fraction (porosity)
-    integer  :: sphere_pack_n       !< Explicit number of spheres to pack
+    integer :: sphere_pack_n       !< Explicit number of spheres to pack
     real(wp) :: sphere_pack_min_gap  !< Minimum surface-to-surface gap between spheres
-    integer  :: sphere_pack_seed     !< RNG seed (>0 for reproducible, <=0 for random)
-    logical  :: sphere_pack_periodic !< Pack with PBC: centres anywhere in domain, images wrap at walls
+    integer :: sphere_pack_seed     !< RNG seed (>0 for reproducible, <=0 for random)
+    logical :: sphere_pack_periodic !< Pack with PBC: centres anywhere in domain, images wrap at walls
     !> @}
 
     type(vec3_dt), allocatable, dimension(:) :: airfoil_grid_u, airfoil_grid_l
@@ -482,13 +482,13 @@ contains
         num_ibs = dflt_int
 
         ! Sphere Packing defaults
-        sphere_pack         = .false.
-        sphere_pack_radius  = dflt_real
-        sphere_pack_vf      = dflt_real
+        sphere_pack = .false.
+        sphere_pack_radius = dflt_real
+        sphere_pack_vf = dflt_real
         sphere_pack_void_frac = dflt_real
-        sphere_pack_n       = dflt_int
+        sphere_pack_n = dflt_int
         sphere_pack_min_gap = 0.0_wp
-        sphere_pack_seed    = -1
+        sphere_pack_seed = -1
         sphere_pack_periodic = .false.
 
         do i = 1, num_ibs_max

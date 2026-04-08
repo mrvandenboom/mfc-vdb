@@ -83,7 +83,9 @@
             "m_check_ib_patches",
             "m_perturbation",
             "m_simplex_noise",
-            "m_boundary_conditions"
+            "m_boundary_conditions",
+	    "m_sphere_pack_data",
+	    "m_sphere_packing"
         ]
     }
 ]

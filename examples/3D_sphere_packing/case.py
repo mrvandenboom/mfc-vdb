@@ -10,9 +10,9 @@ L = 0.01  # 1 cm cube
 Nx = Ny = Nz = 199
 
 # Sphere packing
-R = 2.5e-04       # sphere radius
-vf = 0.10           # target solid volume fraction
-min_gap = 0.1 * R   # minimum surface-to-surface gap
+R = 2.5e-04  # sphere radius
+vf = 0.10  # target solid volume fraction
+min_gap = 0.1 * R  # minimum surface-to-surface gap
 
 # Flow
 gam_a = 1.4

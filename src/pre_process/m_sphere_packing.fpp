@@ -47,14 +47,14 @@ contains
         real(wp) :: domain_vol, sphere_vol, inset_vol, eff_vf
         real(wp) :: x_lo, x_hi, y_lo, y_hi, z_lo, z_hi
         real(wp) :: a, a_gap, a_vf, nn_dist, max_jitter
-        integer  :: n_spheres, n_sites
-        integer  :: ix, iy, iz, ib_basis, nx, ny, nz
-        integer  :: i, j, n_overlaps
+        integer :: n_spheres, n_sites
+        integer :: ix, iy, iz, ib_basis, nx, ny, nz
+        integer :: i, j, n_overlaps
         real(wp) :: bx, by, bz, cx, cy, cz
         real(wp) :: rx, ry, rz, rval
         real(wp) :: sep
-        real(wp), allocatable :: sites(:,:)
-        real(wp), allocatable :: centers(:,:)
+        real(wp), allocatable :: sites(:, :)
+        real(wp), allocatable :: centers(:, :)
 
         ! FCC basis: 4 points per unit cell
         real(wp) :: basis(3, 4)
@@ -133,8 +133,8 @@ contains
             inset_vol = domain_vol
         else
             inset_vol = (x_hi - x_lo - 2.0_wp*sphere_pack_radius) &
-                       *(y_hi - y_lo - 2.0_wp*sphere_pack_radius) &
-                       *(z_hi - z_lo - 2.0_wp*sphere_pack_radius)
+                        *(y_hi - y_lo - 2.0_wp*sphere_pack_radius) &
+                        *(z_hi - z_lo - 2.0_wp*sphere_pack_radius)
 
             if (inset_vol <= 0.0_wp) then
                 call s_mpi_abort( &
@@ -196,10 +196,10 @@ contains
         end if
 
         ! FCC basis vectors (conventional unit cell)
-        basis(:, 1) = [0.0_wp,      0.0_wp,      0.0_wp     ]
-        basis(:, 2) = [0.5_wp*a,    0.5_wp*a,    0.0_wp     ]
-        basis(:, 3) = [0.5_wp*a,    0.0_wp,      0.5_wp*a   ]
-        basis(:, 4) = [0.0_wp,      0.5_wp*a,    0.5_wp*a   ]
+        basis(:, 1) = [0.0_wp, 0.0_wp, 0.0_wp]
+        basis(:, 2) = [0.5_wp*a, 0.5_wp*a, 0.0_wp]
+        basis(:, 3) = [0.5_wp*a, 0.0_wp, 0.5_wp*a]
+        basis(:, 4) = [0.0_wp, 0.5_wp*a, 0.5_wp*a]
 
         ! Seed the random number generator (reproducible if seed > 0)
         if (sphere_pack_seed > 0) then
@@ -213,7 +213,7 @@ contains
         nz = ceiling((z_hi - z_lo)/a) + 1
 
         ! Upper bound on number of sites
-        allocate(sites(3, 4*nx*ny*nz))
+        allocate (sites(3, 4*nx*ny*nz))
         n_sites = 0
 
         do iz = 0, nz - 1
@@ -283,9 +283,9 @@ contains
         end if
 
         ! Copy selected sites into centers
-        allocate(centers(3, n_spheres))
+        allocate (centers(3, n_spheres))
         centers(:, 1:n_spheres) = sites(:, 1:n_spheres)
-        deallocate(sites)
+        deallocate (sites)
 
         ! Step 3: add random jitter to each sphere
         if (max_jitter > 0.0_wp) then
@@ -299,16 +299,16 @@ contains
 
                 ! Periodic: wrap into domain.  Non-periodic: clamp to inset box.
                 if (sphere_pack_periodic) then
-                    centers(1,i) = centers(1,i) - (x_hi-x_lo)*floor((centers(1,i)-x_lo)/(x_hi-x_lo))
-                    centers(2,i) = centers(2,i) - (y_hi-y_lo)*floor((centers(2,i)-y_lo)/(y_hi-y_lo))
-                    centers(3,i) = centers(3,i) - (z_hi-z_lo)*floor((centers(3,i)-z_lo)/(z_hi-z_lo))
+                    centers(1, i) = centers(1, i) - (x_hi - x_lo)*floor((centers(1, i) - x_lo)/(x_hi - x_lo))
+                    centers(2, i) = centers(2, i) - (y_hi - y_lo)*floor((centers(2, i) - y_lo)/(y_hi - y_lo))
+                    centers(3, i) = centers(3, i) - (z_hi - z_lo)*floor((centers(3, i) - z_lo)/(z_hi - z_lo))
                 else
                     centers(1, i) = max(x_lo + sphere_pack_radius, &
-                        min(x_hi - sphere_pack_radius, centers(1, i)))
+                                        min(x_hi - sphere_pack_radius, centers(1, i)))
                     centers(2, i) = max(y_lo + sphere_pack_radius, &
-                        min(y_hi - sphere_pack_radius, centers(2, i)))
+                                        min(y_hi - sphere_pack_radius, centers(2, i)))
                     centers(3, i) = max(z_lo + sphere_pack_radius, &
-                        min(z_hi - sphere_pack_radius, centers(3, i)))
+                                        min(z_hi - sphere_pack_radius, centers(3, i)))
                 end if
             end do
 
@@ -345,7 +345,7 @@ contains
             print '(A)', ' '
             print '(A)', '  Sphere Packing Summary'
             print '(A)', ' '
-            print '(A,I0)',     '  Spheres placed       : ', n_spheres
+            print '(A,I0)', '  Spheres placed       : ', n_spheres
             print '(A,ES12.5)', '  Sphere radius        : ', sphere_pack_radius
             print '(A,ES12.5)', '  Solid vol. fraction  : ', sphere_pack_vf
             print '(A,ES12.5)', '  Void fraction        : ', &
@@ -357,14 +357,14 @@ contains
             print '(A,ES12.5)', '  FCC lattice constant : ', a
             print '(A,ES12.5)', '  Max jitter applied   : ', max_jitter
             if (n_overlaps > 0) then
-                print '(A,I0)',  '  Remaining overlaps   : ', n_overlaps
+                print '(A,I0)', '  Remaining overlaps   : ', n_overlaps
             else
-                print '(A)',     '  Remaining overlaps   : 0 (fully resolved)'
+                print '(A)', '  Remaining overlaps   : 0 (fully resolved)'
             end if
             print '(A)', ' '
         end if
 
-        deallocate(centers)
+        deallocate (centers)
 
     end subroutine s_pack_spheres
 
@@ -372,12 +372,12 @@ contains
     !! Uses minimum-image convention when sphere_pack_periodic is true.
     impure subroutine s_count_overlaps(centers, n, sep, n_overlaps)
 
-        real(wp), intent(in) :: centers(:,:)
-        integer,  intent(in) :: n
+        real(wp), intent(in) :: centers(:, :)
+        integer, intent(in) :: n
         real(wp), intent(in) :: sep
-        integer,  intent(out) :: n_overlaps
+        integer, intent(out) :: n_overlaps
 
-        integer  :: i, j
+        integer :: i, j
         real(wp) :: dx, dy, dz, sep_sq
         real(wp) :: lx, ly, lz
 
@@ -415,12 +415,12 @@ contains
         integer, allocatable :: seed_array(:)
 
         call random_seed(size=n)
-        allocate(seed_array(n))
+        allocate (seed_array(n))
         do i = 1, n
             seed_array(i) = seed_val + (i - 1)*37
         end do
         call random_seed(put=seed_array)
-        deallocate(seed_array)
+        deallocate (seed_array)
 
     end subroutine s_seed_rng
 

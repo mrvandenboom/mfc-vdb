@@ -216,6 +216,7 @@ DESCRIPTIONS = {
     "bf_x": "Enable body force in x-direction",
     "bf_y": "Enable body force in y-direction",
     "bf_z": "Enable body force in z-direction",
+    "bf_ramp_t": "Body force ramp-up time",
     "g_x": "Body force magnitude in x-direction",
     "g_y": "Body force magnitude in y-direction",
     "g_z": "Body force magnitude in z-direction",
@@ -250,6 +251,15 @@ DESCRIPTIONS = {
     "lag_mg_wrt": "Write bubble gas mass",
     "lag_betaT_wrt": "Write bubble heat transfer coefficient",
     "lag_betaC_wrt": "Write bubble mass transfer coefficient",
+    # Sphere packing parameters
+    "sphere_pack": "Sphere pack will run when set to T",
+    "sphere_pack_min_gap": "Min gap between sphere centers",
+    "sphere_pack_n": "Number of spheres in the pack",
+    "sphere_pack_periodic": "When set to T, packing is periodic",
+    "sphere_pack_radius": "Sphere radius using in packing algorithm",
+    "sphere_pack_seed": "RNG seed for sphere packing algorithm",
+    "sphere_pack_vf": "Sphere pack volume fraction",
+    "sphere_pack_void_frac": "Sphere pack void fraction",
 }
 
 # Patterns for auto-generating descriptions of indexed parameters

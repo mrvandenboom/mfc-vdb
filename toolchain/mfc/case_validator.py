@@ -587,15 +587,10 @@ class CaseValidator:
             )
             # Exactly one of sphere_pack_vf, sphere_pack_void_frac, or
             # sphere_pack_n must be set.
-            n_set = (
-                (1 if self._is_numeric(sp_vf) and sp_vf > 0 else 0)
-                + (1 if self._is_numeric(sp_void) and sp_void > 0 else 0)
-                + (1 if self._is_numeric(sp_n) and sp_n > 0 else 0)
-            )
+            n_set = (1 if self._is_numeric(sp_vf) and sp_vf > 0 else 0) + (1 if self._is_numeric(sp_void) and sp_void > 0 else 0) + (1 if self._is_numeric(sp_n) and sp_n > 0 else 0)
             self.prohibit(
                 n_set != 1,
-                "sphere_pack: set exactly one of sphere_pack_vf, "
-                "sphere_pack_void_frac, or sphere_pack_n",
+                "sphere_pack: set exactly one of sphere_pack_vf, sphere_pack_void_frac, or sphere_pack_n",
             )
             if self._is_numeric(sp_vf) and sp_vf > 0:
                 self.prohibit(
@@ -605,8 +600,7 @@ class CaseValidator:
             if self._is_numeric(sp_void) and sp_void > 0:
                 self.prohibit(
                     sp_void < 0.26,
-                    "sphere_pack_void_frac must be >= 0.26 "
-                    "(solid VF cannot exceed FCC limit ~74%)",
+                    "sphere_pack_void_frac must be >= 0.26 (solid VF cannot exceed FCC limit ~74%)",
                 )
                 self.prohibit(
                     sp_void >= 1.0,

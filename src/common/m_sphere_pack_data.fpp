@@ -41,18 +41,18 @@ module m_sphere_pack_data
     private
 
     ! Compact sphere data (shared between pre_process and simulation)
-    real(wp), allocatable, public :: sp_centers(:,:)  !< (3, n_packed) sphere centers
+    real(wp), allocatable, public :: sp_centers(:, :)  !< (3, n_packed) sphere centers
     real(wp), public :: sp_radius = 0.0_wp            !< uniform radius
     real(wp), public :: sp_min_gap = 0.0_wp           !< minimum surface gap
-    integer, public  :: n_packed_spheres = 0           !< number of packed spheres
+    integer, public :: n_packed_spheres = 0           !< number of packed spheres
 
     !> Index of the sentinel patch_ib entry used for all packed-sphere cells.
     !! Set to num_ibs + 1 so it sits just above the valid regular-patch range.
-    integer, public  :: sp_ib_offset = 0
+    integer, public :: sp_ib_offset = 0
 
 #ifdef MFC_SIMULATION
     ! Cell-linked list for spatial queries (simulation only)
-    integer, allocatable :: sp_head(:,:,:) !< head(bx,by,bz): first sphere in bin
+    integer, allocatable :: sp_head(:, :, :) !< head(bx,by,bz): first sphere in bin
     integer, allocatable :: sp_next(:)     !< next(i): next sphere in same bin
     integer :: sp_nbins(3) = 0             !< number of bins in x, y, z
     real(wp) :: sp_bin_size = 0.0_wp       !< bin edge length
@@ -77,8 +77,8 @@ contains
     !! so the sentinel patch_ib entry is just outside the valid range.
     impure subroutine s_init_sphere_pack_data(centers, n, radius, gap)
 
-        real(wp), intent(in) :: centers(:,:) !< (3, n) sphere centers
-        integer,  intent(in) :: n            !< number of spheres
+        real(wp), intent(in) :: centers(:, :) !< (3, n) sphere centers
+        integer, intent(in) :: n            !< number of spheres
         real(wp), intent(in) :: radius       !< uniform radius
         real(wp), intent(in) :: gap          !< minimum gap
 
@@ -89,8 +89,8 @@ contains
         ! Sentinel: one slot above the last valid regular IB patch
         sp_ib_offset = num_ibs + 1
 
-        if (allocated(sp_centers)) deallocate(sp_centers)
-        allocate(sp_centers(3, n))
+        if (allocated(sp_centers)) deallocate (sp_centers)
+        allocate (sp_centers(3, n))
         sp_centers(:, 1:n) = centers(:, 1:n)
 
     end subroutine s_init_sphere_pack_data
@@ -114,13 +114,13 @@ contains
 
         filepath = trim(dir)//'/sphere_pack.dat'
 
-        open(newunit=iu, file=trim(filepath), form='unformatted', &
-             access='stream', status='replace', action='write')
-        write(iu) n_packed_spheres
-        write(iu) sp_radius
-        write(iu) sp_min_gap
-        write(iu) sp_centers(:, 1:n_packed_spheres)
-        close(iu)
+        open (newunit=iu, file=trim(filepath), form='unformatted', &
+              access='stream', status='replace', action='write')
+        write (iu) n_packed_spheres
+        write (iu) sp_radius
+        write (iu) sp_min_gap
+        write (iu) sp_centers(:, 1:n_packed_spheres)
+        close (iu)
 
         print '(A,I0,A,A)', &
             ' sphere_pack: wrote ', n_packed_spheres, &
@@ -140,22 +140,22 @@ contains
 
         filepath = trim(dir)//'/sphere_pack.dat'
 
-        inquire(file=trim(filepath), exist=file_exists)
+        inquire (file=trim(filepath), exist=file_exists)
         if (.not. file_exists) then
             n_packed_spheres = 0
             return
         end if
 
-        open(newunit=iu, file=trim(filepath), form='unformatted', &
-             access='stream', status='old', action='read')
-        read(iu) n_packed_spheres
-        read(iu) sp_radius
-        read(iu) sp_min_gap
+        open (newunit=iu, file=trim(filepath), form='unformatted', &
+              access='stream', status='old', action='read')
+        read (iu) n_packed_spheres
+        read (iu) sp_radius
+        read (iu) sp_min_gap
 
-        if (allocated(sp_centers)) deallocate(sp_centers)
-        allocate(sp_centers(3, n_packed_spheres))
-        read(iu) sp_centers(:, 1:n_packed_spheres)
-        close(iu)
+        if (allocated(sp_centers)) deallocate (sp_centers)
+        allocate (sp_centers(3, n_packed_spheres))
+        read (iu) sp_centers(:, 1:n_packed_spheres)
+        close (iu)
 
         ! Sentinel just above the last regular IB patch
         sp_ib_offset = num_ibs + 1
@@ -197,12 +197,12 @@ contains
         sp_nbins(2) = max(1, ceiling(ly/sp_bin_size))
         sp_nbins(3) = max(1, ceiling(lz/sp_bin_size))
 
-        if (allocated(sp_head)) deallocate(sp_head)
-        allocate(sp_head(sp_nbins(1), sp_nbins(2), sp_nbins(3)))
-        sp_head(:,:,:) = 0
+        if (allocated(sp_head)) deallocate (sp_head)
+        allocate (sp_head(sp_nbins(1), sp_nbins(2), sp_nbins(3)))
+        sp_head(:, :, :) = 0
 
-        if (allocated(sp_next)) deallocate(sp_next)
-        allocate(sp_next(n_packed_spheres))
+        if (allocated(sp_next)) deallocate (sp_next)
+        allocate (sp_next(n_packed_spheres))
         sp_next(:) = 0
 
         do i = 1, n_packed_spheres
@@ -270,9 +270,9 @@ contains
                                     ddy = y_cc(j) - sp_centers(2, s)
                                     ddz = z_cc(k) - sp_centers(3, s)
                                     if (sphere_pack_periodic) then
-                                        ddx = ddx - (x_domain%end-x_domain%beg)*nint(ddx/(x_domain%end-x_domain%beg))
-                                        ddy = ddy - (y_domain%end-y_domain%beg)*nint(ddy/(y_domain%end-y_domain%beg))
-                                        ddz = ddz - (z_domain%end-z_domain%beg)*nint(ddz/(z_domain%end-z_domain%beg))
+                                        ddx = ddx - (x_domain%end - x_domain%beg)*nint(ddx/(x_domain%end - x_domain%beg))
+                                        ddy = ddy - (y_domain%end - y_domain%beg)*nint(ddy/(y_domain%end - y_domain%beg))
+                                        ddz = ddz - (z_domain%end - z_domain%beg)*nint(ddz/(z_domain%end - z_domain%beg))
                                     end if
                                     if (ddx*ddx + ddy*ddy + ddz*ddz <= r_sq) then
                                         ! All packed-sphere cells share the sentinel
@@ -343,9 +343,9 @@ contains
                         ddy = gy - sp_centers(2, s)
                         ddz = gz - sp_centers(3, s)
                         if (sphere_pack_periodic) then
-                            ddx = ddx - (x_domain%end-x_domain%beg)*nint(ddx/(x_domain%end-x_domain%beg))
-                            ddy = ddy - (y_domain%end-y_domain%beg)*nint(ddy/(y_domain%end-y_domain%beg))
-                            ddz = ddz - (z_domain%end-z_domain%beg)*nint(ddz/(z_domain%end-z_domain%beg))
+                            ddx = ddx - (x_domain%end - x_domain%beg)*nint(ddx/(x_domain%end - x_domain%beg))
+                            ddy = ddy - (y_domain%end - y_domain%beg)*nint(ddy/(y_domain%end - y_domain%beg))
+                            ddz = ddz - (z_domain%end - z_domain%beg)*nint(ddz/(z_domain%end - z_domain%beg))
                         end if
                         dist_sq = ddx*ddx + ddy*ddy + ddz*ddz
                         if (dist_sq < best_sq) then
@@ -385,21 +385,21 @@ contains
         real(wp), intent(in) :: x
         integer :: bx
         bx = min(sp_nbins(1), max(1, &
-            int((x - sp_origin(1))/sp_bin_size) + 1))
+                                  int((x - sp_origin(1))/sp_bin_size) + 1))
     end function f_bin_x
 
     pure function f_bin_y(y) result(by)
         real(wp), intent(in) :: y
         integer :: by
         by = min(sp_nbins(2), max(1, &
-            int((y - sp_origin(2))/sp_bin_size) + 1))
+                                  int((y - sp_origin(2))/sp_bin_size) + 1))
     end function f_bin_y
 
     pure function f_bin_z(z) result(bz)
         real(wp), intent(in) :: z
         integer :: bz
         bz = min(sp_nbins(3), max(1, &
-            int((z - sp_origin(3))/sp_bin_size) + 1))
+                                  int((z - sp_origin(3))/sp_bin_size) + 1))
     end function f_bin_z
 
 #endif
@@ -407,10 +407,10 @@ contains
     !> Deallocate all module data.
     impure subroutine s_finalize_sphere_pack_data()
 
-        if (allocated(sp_centers)) deallocate(sp_centers)
+        if (allocated(sp_centers)) deallocate (sp_centers)
 #ifdef MFC_SIMULATION
-        if (allocated(sp_head)) deallocate(sp_head)
-        if (allocated(sp_next)) deallocate(sp_next)
+        if (allocated(sp_head)) deallocate (sp_head)
+        if (allocated(sp_next)) deallocate (sp_next)
         sp_cell_list_built = .false.
 #endif
         n_packed_spheres = 0

@@ -712,9 +712,7 @@ DEPENDENCIES = {
             "recommends": ["bubbles_euler"],
         }
     },
-    "ib": {
-        "when_true": {}
-    },
+    "ib": {"when_true": {}},
     "acoustic_source": {
         "when_true": {
             "requires": ["num_source"],
