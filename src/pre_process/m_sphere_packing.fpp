@@ -126,15 +126,21 @@ contains
         sep = 2.0_wp*sphere_pack_radius + sphere_pack_min_gap
 
         ! Compute the inset domain (where sphere centres can live).
-        ! Smaller by one radius from each wall.
-        inset_vol = (x_hi - x_lo - 2.0_wp*sphere_pack_radius) &
-                   *(y_hi - y_lo - 2.0_wp*sphere_pack_radius) &
-                   *(z_hi - z_lo - 2.0_wp*sphere_pack_radius)
+        ! Non-periodic: inset by one radius from each wall so spheres never
+        ! cross the boundary.  Periodic: centres may be anywhere in the full
+        ! domain; ghost images are handled by the min-image convention.
+        if (sphere_pack_periodic) then
+            inset_vol = domain_vol
+        else
+            inset_vol = (x_hi - x_lo - 2.0_wp*sphere_pack_radius) &
+                       *(y_hi - y_lo - 2.0_wp*sphere_pack_radius) &
+                       *(z_hi - z_lo - 2.0_wp*sphere_pack_radius)
 
-        if (inset_vol <= 0.0_wp) then
-            call s_mpi_abort( &
-                'sphere_pack: domain too small for sphere radius. &
-                &Each dimension must exceed 2*sphere_pack_radius.')
+            if (inset_vol <= 0.0_wp) then
+                call s_mpi_abort( &
+                    'sphere_pack: domain too small for sphere radius. &
+                    &Each dimension must exceed 2*sphere_pack_radius.')
+            end if
         end if
 
         ! Two constraints determine the FCC lattice constant `a`:
@@ -218,13 +224,22 @@ contains
                         cy = y_lo + real(iy, wp)*a + basis(2, ib_basis)
                         cz = z_lo + real(iz, wp)*a + basis(3, ib_basis)
 
-                        ! Keep only if sphere fits inside domain
-                        if (cx >= x_lo + sphere_pack_radius .and. &
-                            cx <= x_hi - sphere_pack_radius .and. &
-                            cy >= y_lo + sphere_pack_radius .and. &
-                            cy <= y_hi - sphere_pack_radius .and. &
-                            cz >= z_lo + sphere_pack_radius .and. &
-                            cz <= z_hi - sphere_pack_radius) then
+                        ! Periodic: wrap the site into the domain and keep it.
+                        ! Non-periodic: keep only if sphere fits inside (inset by R).
+                        if (sphere_pack_periodic) then
+                            cx = cx - (x_hi - x_lo)*floor((cx - x_lo)/(x_hi - x_lo))
+                            cy = cy - (y_hi - y_lo)*floor((cy - y_lo)/(y_hi - y_lo))
+                            cz = cz - (z_hi - z_lo)*floor((cz - z_lo)/(z_hi - z_lo))
+                            n_sites = n_sites + 1
+                            sites(1, n_sites) = cx
+                            sites(2, n_sites) = cy
+                            sites(3, n_sites) = cz
+                        else if (cx >= x_lo + sphere_pack_radius .and. &
+                                 cx <= x_hi - sphere_pack_radius .and. &
+                                 cy >= y_lo + sphere_pack_radius .and. &
+                                 cy <= y_hi - sphere_pack_radius .and. &
+                                 cz >= z_lo + sphere_pack_radius .and. &
+                                 cz <= z_hi - sphere_pack_radius) then
                             n_sites = n_sites + 1
                             sites(1, n_sites) = cx
                             sites(2, n_sites) = cy
@@ -282,13 +297,19 @@ contains
                 centers(2, i) = centers(2, i) + (2.0_wp*ry - 1.0_wp)*max_jitter
                 centers(3, i) = centers(3, i) + (2.0_wp*rz - 1.0_wp)*max_jitter
 
-                ! Clamp to domain
-                centers(1, i) = max(x_lo + sphere_pack_radius, &
-                    min(x_hi - sphere_pack_radius, centers(1, i)))
-                centers(2, i) = max(y_lo + sphere_pack_radius, &
-                    min(y_hi - sphere_pack_radius, centers(2, i)))
-                centers(3, i) = max(z_lo + sphere_pack_radius, &
-                    min(z_hi - sphere_pack_radius, centers(3, i)))
+                ! Periodic: wrap into domain.  Non-periodic: clamp to inset box.
+                if (sphere_pack_periodic) then
+                    centers(1,i) = centers(1,i) - (x_hi-x_lo)*floor((centers(1,i)-x_lo)/(x_hi-x_lo))
+                    centers(2,i) = centers(2,i) - (y_hi-y_lo)*floor((centers(2,i)-y_lo)/(y_hi-y_lo))
+                    centers(3,i) = centers(3,i) - (z_hi-z_lo)*floor((centers(3,i)-z_lo)/(z_hi-z_lo))
+                else
+                    centers(1, i) = max(x_lo + sphere_pack_radius, &
+                        min(x_hi - sphere_pack_radius, centers(1, i)))
+                    centers(2, i) = max(y_lo + sphere_pack_radius, &
+                        min(y_hi - sphere_pack_radius, centers(2, i)))
+                    centers(3, i) = max(z_lo + sphere_pack_radius, &
+                        min(z_hi - sphere_pack_radius, centers(3, i)))
+                end if
             end do
 
             if (proc_rank == 0) then
@@ -348,6 +369,7 @@ contains
     end subroutine s_pack_spheres
 
     !> Count overlapping pairs (diagnostic only, single O(N^2) pass).
+    !! Uses minimum-image convention when sphere_pack_periodic is true.
     impure subroutine s_count_overlaps(centers, n, sep, n_overlaps)
 
         real(wp), intent(in) :: centers(:,:)
@@ -357,15 +379,25 @@ contains
 
         integer  :: i, j
         real(wp) :: dx, dy, dz, sep_sq
+        real(wp) :: lx, ly, lz
 
         sep_sq = sep*sep
         n_overlaps = 0
+
+        lx = x_domain%end - x_domain%beg
+        ly = y_domain%end - y_domain%beg
+        lz = z_domain%end - z_domain%beg
 
         do i = 1, n - 1
             do j = i + 1, n
                 dx = centers(1, j) - centers(1, i)
                 dy = centers(2, j) - centers(2, i)
                 dz = centers(3, j) - centers(3, i)
+                if (sphere_pack_periodic) then
+                    dx = dx - lx*nint(dx/lx)
+                    dy = dy - ly*nint(dy/ly)
+                    dz = dz - lz*nint(dz/lz)
+                end if
                 if (dx*dx + dy*dy + dz*dz < sep_sq) then
                     n_overlaps = n_overlaps + 1
                 end if

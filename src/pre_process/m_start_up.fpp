@@ -109,7 +109,7 @@ contains
             down_sample, recon_type, muscl_order, hyper_cleaning, &
             simplex_perturb, simplex_params, fft_wrt, &
             sphere_pack, sphere_pack_radius, sphere_pack_vf, sphere_pack_void_frac, sphere_pack_n, &
-            sphere_pack_min_gap, sphere_pack_seed
+            sphere_pack_min_gap, sphere_pack_seed, sphere_pack_periodic
 
         file_loc = 'pre_process.inp'
         inquire (FILE=trim(file_loc), EXIST=file_check)

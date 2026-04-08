@@ -1,0 +1,7 @@
+#!/bin/bash
+
+./mfc.sh run ../casefiles/fluidtrials/case.py \
+	--name fluidtrial \
+	--mpi \
+	--nodes 1 \
+	--tasks-per-node 10

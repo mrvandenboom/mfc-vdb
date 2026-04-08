@@ -975,12 +975,19 @@ This parameter enables the use of true `pi_\infty` in bubble dynamics models whe
 | `w_x[y,z]`        | Real    | Frequency of oscillating acceleration      |
 | `p_x[y,z]`        | Real    | Phase shift of oscillating acceleration    |
 | `g_x[y,z]`        | Real    | Magnitude of background acceleration       |
+| `bf_ramp_t`        | Real    | Ramp duration: body force scales from 0 to 100% over `[0, bf_ramp_t]` (default: 0, disabled) |
 
 `k_x[y,z]`, `w_x[y,z]`, `p_x[y,z]`, and `g_x[y,z]` define an oscillating acceleration in the `x[y,z]` direction with the form
 
 \f[ a_{x[y,z]} = g_{x[y,z]} + k_{x[y,z]}\sin\left(w_{x[y,z]}t + p_{x[y,z]}\right). \f]
 
 By convention, positive accelerations in the `x[y,z]` direction are in the positive `x[y,z]` direction.
+
+When `bf_ramp_t > 0`, all body force accelerations are multiplied by a linear ramp factor that increases from 0 at \f$t=0\f$ to 1 at \f$t=\f$`bf_ramp_t`, and remains 1 thereafter:
+
+\f[ \text{ramp}(t) = \min\!\left(1,\, \frac{t}{\texttt{bf\_ramp\_t}}\right). \f]
+
+A typical choice is `bf_ramp_t = n * dt` to ramp over `n` time steps.
 
 ### 14. Magnetohydrodynamics (MHD)
 

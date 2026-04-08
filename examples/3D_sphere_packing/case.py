@@ -10,8 +10,8 @@ L = 0.01  # 1 cm cube
 Nx = Ny = Nz = 199
 
 # Sphere packing
-R = 4.92e-05       # sphere radius
-vf = 0.50           # target solid volume fraction
+R = 2.5e-04       # sphere radius
+vf = 0.10           # target solid volume fraction
 min_gap = 0.1 * R   # minimum surface-to-surface gap
 
 # Flow
@@ -25,8 +25,8 @@ u_a = Ma * c_a
 # Time stepping
 dx = L / Nx
 dt = 0.25 * dx / (c_a + abs(u_a))
-t_stop = 500
-t_save = 50
+t_stop = 10
+t_save = 1
 
 print(
     json.dumps(

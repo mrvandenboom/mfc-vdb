@@ -242,6 +242,7 @@ _SIMPLE_DESCS = {
     "sphere_pack_n": "Explicit number of spheres to pack",
     "sphere_pack_min_gap": "Minimum surface-to-surface gap between packed spheres",
     "sphere_pack_seed": "RNG seed for sphere packing (>0 for reproducible)",
+    "sphere_pack_periodic": "Pack spheres with periodic boundary conditions (centres may lie anywhere in domain, images wrap at walls)",
     "num_source": "Number of acoustic sources",
     "num_probes": "Number of probes",
     "num_integrals": "Number of integral regions",
@@ -279,6 +280,7 @@ _SIMPLE_DESCS = {
     "g_x": "Gravitational acceleration in x",
     "g_y": "Gravitational acceleration in y",
     "g_z": "Gravitational acceleration in z",
+    "bf_ramp_t": "Body force ramp duration (0 to disable)",
     # More output
     "E_wrt": "Write energy field",
     "c_wrt": "Write sound speed field",
@@ -916,6 +918,7 @@ def _load():
     _r("sphere_pack_n", INT, {"ib"})
     _r("sphere_pack_min_gap", REAL, {"ib"})
     _r("sphere_pack_seed", INT, {"ib"})
+    _r("sphere_pack_periodic", LOG, {"ib"})
 
     # Probes
     for n in ["num_probes", "num_integrals"]:
@@ -1066,6 +1069,7 @@ def _load():
         _r(f"w_{d}", REAL, math=r"\f$\omega_" + d + r"\f$")
         _r(f"p_{d}", REAL, math=r"\f$\phi_" + d + r"\f$")
         _r(f"bf_{d}", LOG)
+    _r("bf_ramp_t", REAL)
 
     # INDEXED PARAMETERS
 

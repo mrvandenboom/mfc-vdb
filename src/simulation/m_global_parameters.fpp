@@ -148,36 +148,38 @@ module m_global_parameters
     logical :: nv_uvm_pref_gpu  !< Enable explicit gpu memory hints (default FALSE)
     !> @}
 
-    real(wp)           :: weno_eps                     !< Binding for the WENO nonlinear weights
-    real(wp)           :: teno_CT                      !< Smoothness threshold for TENO
-    logical            :: mp_weno                      !< Monotonicity preserving (MP) WENO
-    logical            :: weno_avg                     !< Average left/right cell-boundary states
-    logical            :: weno_Re_flux                 !< WENO reconstruct velocity gradients for viscous stress tensor
-    integer            :: riemann_solver               !< Riemann solver algorithm
-    integer            :: low_Mach                     !< Low Mach number fix to HLLC Riemann solver
-    integer            :: wave_speeds                  !< Wave speeds estimation method
-    integer            :: avg_state                    !< Average state evaluation method
-    logical            :: alt_soundspeed               !< Alternate mixture sound speed
-    logical            :: null_weights                 !< Null undesired WENO weights
-    logical            :: mixture_err                  !< Mixture properties correction
-    logical            :: hypoelasticity               !< hypoelasticity modeling
-    logical            :: hyperelasticity              !< hyperelasticity modeling
-    logical            :: int_comp                     !< THINC interface compression
-    real(wp)           :: ic_eps                       !< THINC Epsilon to compress on surface cells
-    real(wp)           :: ic_beta                      !< THINC Sharpness Parameter
-    integer            :: hyper_model                  !< hyperelasticity solver algorithm
-    logical            :: elasticity                   !< elasticity modeling, true for hyper or hypo
-    logical, parameter :: chemistry = .${chemistry}$.  !< Chemistry modeling
-    logical            :: shear_stress                 !< Shear stresses
-    logical            :: bulk_stress                  !< Bulk stresses
-    logical            :: cont_damage                  !< Continuum damage modeling
-    logical            :: hyper_cleaning               !< Hyperbolic cleaning for MHD for divB=0
-    integer            :: num_igr_iters                !< number of iterations for elliptic solve
-    integer            :: num_igr_warm_start_iters     !< number of warm start iterations for elliptic solve
-    real(wp)           :: alf_factor                   !< alpha factor for IGR
-    logical            :: bodyForces
-    logical            :: bf_x, bf_y, bf_z             !< body force toggle in three directions
-    !> amplitude, frequency, and phase shift sinusoid in each direction
+    real(wp) :: weno_eps       !< Binding for the WENO nonlinear weights
+    real(wp) :: teno_CT        !< Smoothness threshold for TENO
+    logical :: mp_weno        !< Monotonicity preserving (MP) WENO
+    logical :: weno_avg       ! Average left/right cell-boundary states
+    logical :: weno_Re_flux   !< WENO reconstruct velocity gradients for viscous stress tensor
+    integer :: riemann_solver !< Riemann solver algorithm
+    integer :: low_Mach       !< Low Mach number fix to HLLC Riemann solver
+    integer :: wave_speeds    !< Wave speeds estimation method
+    integer :: avg_state      !< Average state evaluation method
+    logical :: alt_soundspeed !< Alternate mixture sound speed
+    logical :: null_weights    !< Null undesired WENO weights
+    logical :: mixture_err     !< Mixture properties correction
+    logical :: hypoelasticity  !< hypoelasticity modeling
+    logical :: hyperelasticity !< hyperelasticity modeling
+    logical :: int_comp        !< THINC interface compression
+    real(wp) :: ic_eps         !< THINC Epsilon to compress on surface cells
+    real(wp) :: ic_beta        !< THINC Sharpness Parameter
+    integer :: hyper_model     !< hyperelasticity solver algorithm
+    logical :: elasticity      !< elasticity modeling, true for hyper or hypo
+    logical, parameter :: chemistry = .${chemistry}$. !< Chemistry modeling
+    logical :: shear_stress  !< Shear stresses
+    logical :: bulk_stress   !< Bulk stresses
+    logical :: cont_damage   !< Continuum damage modeling
+    logical :: hyper_cleaning !< Hyperbolic cleaning for MHD for divB=0
+    integer :: num_igr_iters !< number of iterations for elliptic solve
+    integer :: num_igr_warm_start_iters !< number of warm start iterations for elliptic solve
+    real(wp) :: alf_factor  !< alpha factor for IGR
+
+    logical :: bodyForces
+    logical :: bf_x, bf_y, bf_z !< body force toggle in three directions
+    real(wp) :: bf_ramp_t !< ramp duration; body force scales 0->1 over [0, bf_ramp_t]
+    !< amplitude, frequency, and phase shift sinusoid in each direction
     #:for dir in {'x', 'y', 'z'}
         #:for param in {'k','w','p','g'}
             real(wp) :: ${param}$_${dir}$
@@ -349,6 +351,7 @@ module m_global_parameters
     logical :: ib
     integer :: num_ibs
     logical :: ib_state_wrt
+    logical :: sphere_pack_periodic !< Packed spheres use PBC min-image convention
 
     type(ib_patch_parameters), dimension(num_ibs_max) :: patch_ib
     type(vec3_dt), allocatable, dimension(:) :: airfoil_grid_u, airfoil_grid_l
@@ -658,6 +661,7 @@ contains
         ib = .false.
         num_ibs = dflt_int
         ib_state_wrt = .false.
+        sphere_pack_periodic = .false.
 
         ! Bubble modeling
         bubbles_euler = .false.
@@ -702,7 +706,8 @@ contains
 
         bodyForces = .false.
         bf_x = .false.; bf_y = .false.; bf_z = .false.
-        !> amplitude, frequency, and phase shift sinusoid in each direction
+        bf_ramp_t = 0._wp
+        !< amplitude, frequency, and phase shift sinusoid in each direction
         #:for dir in {'x', 'y', 'z'}
             #:for param in {'k','w','p','g'}
                 ${param}$_${dir}$ = dflt_real

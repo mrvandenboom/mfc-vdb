@@ -269,6 +269,11 @@ contains
                                     ddx = x_cc(i) - sp_centers(1, s)
                                     ddy = y_cc(j) - sp_centers(2, s)
                                     ddz = z_cc(k) - sp_centers(3, s)
+                                    if (sphere_pack_periodic) then
+                                        ddx = ddx - (x_domain%end-x_domain%beg)*nint(ddx/(x_domain%end-x_domain%beg))
+                                        ddy = ddy - (y_domain%end-y_domain%beg)*nint(ddy/(y_domain%end-y_domain%beg))
+                                        ddz = ddz - (z_domain%end-z_domain%beg)*nint(ddz/(z_domain%end-z_domain%beg))
+                                    end if
                                     if (ddx*ddx + ddy*ddy + ddz*ddz <= r_sq) then
                                         ! All packed-sphere cells share the sentinel
                                         ib_markers%sf(i, j, k) = sp_ib_offset
@@ -337,6 +342,11 @@ contains
                         ddx = gx - sp_centers(1, s)
                         ddy = gy - sp_centers(2, s)
                         ddz = gz - sp_centers(3, s)
+                        if (sphere_pack_periodic) then
+                            ddx = ddx - (x_domain%end-x_domain%beg)*nint(ddx/(x_domain%end-x_domain%beg))
+                            ddy = ddy - (y_domain%end-y_domain%beg)*nint(ddy/(y_domain%end-y_domain%beg))
+                            ddz = ddz - (z_domain%end-z_domain%beg)*nint(ddz/(z_domain%end-z_domain%beg))
+                        end if
                         dist_sq = ddx*ddx + ddy*ddy + ddz*ddz
                         if (dist_sq < best_sq) then
                             best_sq = dist_sq

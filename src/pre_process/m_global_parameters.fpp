@@ -183,6 +183,7 @@ module m_global_parameters
     integer  :: sphere_pack_n       !< Explicit number of spheres to pack
     real(wp) :: sphere_pack_min_gap  !< Minimum surface-to-surface gap between spheres
     integer  :: sphere_pack_seed     !< RNG seed (>0 for reproducible, <=0 for random)
+    logical  :: sphere_pack_periodic !< Pack with PBC: centres anywhere in domain, images wrap at walls
     !> @}
 
     type(vec3_dt), allocatable, dimension(:) :: airfoil_grid_u, airfoil_grid_l
@@ -488,6 +489,7 @@ contains
         sphere_pack_n       = dflt_int
         sphere_pack_min_gap = 0.0_wp
         sphere_pack_seed    = -1
+        sphere_pack_periodic = .false.
 
         do i = 1, num_ibs_max
             patch_ib(i)%geometry = dflt_int
