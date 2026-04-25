@@ -1081,6 +1081,7 @@ def _load():
         _r(f"w_{d}", REAL, math=r"\f$\omega_" + d + r"\f$")
         _r(f"p_{d}", REAL, math=r"\f$\phi_" + d + r"\f$")
         _r(f"bf_{d}", LOG)
+    _r("bf_ramp_t", REAL)
 
     # INDEXED PARAMETERS
 

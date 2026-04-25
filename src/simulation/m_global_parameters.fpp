@@ -179,6 +179,7 @@ module m_global_parameters
     real(wp)           :: alf_factor                   !< alpha factor for IGR
     logical            :: bodyForces
     logical            :: bf_x, bf_y, bf_z             !< body force toggle in three directions
+    real(wp)           :: bf_ramp_t                    !< ramp time for body force acceleration
     !> amplitude, frequency, and phase shift sinusoid in each direction
     #:for dir in {'x', 'y', 'z'}
         #:for param in {'k','w','p','g'}
@@ -686,6 +687,7 @@ contains
 
         bodyForces = .false.
         bf_x = .false.; bf_y = .false.; bf_z = .false.
+        bf_ramp_t = 0._wp
         !> amplitude, frequency, and phase shift sinusoid in each direction
         #:for dir in {'x', 'y', 'z'}
             #:for param in {'k','w','p','g'}

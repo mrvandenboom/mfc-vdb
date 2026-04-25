@@ -229,6 +229,7 @@ DESCRIPTIONS = {
     "p_x": "Body force phase in x-direction",
     "p_y": "Body force phase in y-direction",
     "p_z": "Body force phase in z-direction",
+    "bf_ramp_t": "Ramp time for body force acceleration (0 = no ramp)",
     # Output flags
     "mom_wrt": "Write momentum to database",
     "flux_wrt": "Write flux data",
