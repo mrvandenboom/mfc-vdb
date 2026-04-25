@@ -992,6 +992,7 @@ This parameter enables the use of true `pi_\infty` in bubble dynamics models whe
 | `w_x[y,z]`        | Real    | Frequency of oscillating acceleration      |
 | `p_x[y,z]`        | Real    | Phase shift of oscillating acceleration    |
 | `g_x[y,z]`        | Real    | Magnitude of background acceleration       |
+| `bf_ramp_t`        | Real    | Ramp-up time for body forces; acceleration scales linearly from 0 to full strength over `t = bf_ramp_t` (disabled when ≤ 0) |
 
 `k_x[y,z]`, `w_x[y,z]`, `p_x[y,z]`, and `g_x[y,z]` define an oscillating acceleration in the `x[y,z]` direction with the form
 

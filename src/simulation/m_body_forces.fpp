@@ -43,10 +43,17 @@ contains
     subroutine s_compute_acceleration(t)
 
         real(wp), intent(in) :: t
+        real(wp)             :: ramp_factor
+
+        if (bf_ramp_t > 0._wp) then
+            ramp_factor = min(1._wp, t/bf_ramp_t)
+        else
+            ramp_factor = 1._wp
+        end if
 
         #:for DIR, XYZ in [(1, 'x'), (2, 'y'), (3, 'z')]
             if (bf_${XYZ}$) then
-                accel_bf(${DIR}$) = g_${XYZ}$ + k_${XYZ}$*sin(w_${XYZ}$*t - p_${XYZ}$)
+                accel_bf(${DIR}$) = ramp_factor*(g_${XYZ}$ + k_${XYZ}$*sin(w_${XYZ}$*t - p_${XYZ}$))
             end if
         #:endfor
 
